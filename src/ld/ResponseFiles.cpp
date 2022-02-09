@@ -8,8 +8,8 @@
 
 #include "ResponseFiles.h"
 
-extern void throwf (const char* format, ...) __attribute__ ((noreturn,format(printf, 1, 2)));
-extern void warning(const char* format, ...) __attribute__((format(printf, 1, 2)));
+extern void throwf(const char *format, ...) __attribute__((noreturn, format(printf, 1, 2)));
+extern void warning(const char *format, ...) __attribute__((format(printf, 1, 2)));
 
 // This file content has been copied from cctools. The warning and error
 // handlers have been replaced with those defined in Options.cpp; but the code
@@ -32,10 +32,11 @@ extern void warning(const char* format, ...) __attribute__((format(printf, 1, 2)
 #include <sys/stat.h>
 #include <unistd.h>
 
-enum expand_result {
-  EXPAND_ERROR = -1,
-  EXPAND_COMPLETE = 0,
-  EXPAND_CONTINUE = 1,
+enum expand_result
+{
+	EXPAND_ERROR = -1,
+	EXPAND_COMPLETE = 0,
+	EXPAND_CONTINUE = 1,
 };
 
 /*
@@ -49,61 +50,61 @@ enum expand_result {
  *
  * it should become its own libstuff module if it has utility in other placees.
  */
-struct string_list {
-  int nstr;
-  char** strs;
+struct string_list
+{
+	int nstr;
+	char **strs;
 };
 
 static enum expand_result expand_at(struct string_list *args,
-struct string_list* at_paths, int *hint_p);
+                                    struct string_list *at_paths, int *hint_p);
 
-static char* get_option(char** buf);
+static char *get_option(char **buf);
 
-static void string_list_add(struct string_list* list, const char* str);
-static void string_list_add_argv(struct string_list* list, int argc,
-char** argv);
-static int string_list_find(const struct string_list* list, const char* str);
-static void string_list_dest(struct string_list* list);
+static void string_list_add(struct string_list *list, const char *str);
+static void string_list_add_argv(struct string_list *list, int argc,
+                                 char **argv);
+static int string_list_find(const struct string_list *list, const char *str);
+static void string_list_dest(struct string_list *list);
 
 /*
  * ExpandResponseFiles() recursively expands "@file" options as they appear in the
  * argc/argv options list.
  */
-int ExpandResponseFiles(int* argc_p, char** argv_p[])
+int
+ExpandResponseFiles(int *argc_p, char **argv_p[])
 {
-  int hint = 0;
-  enum expand_result result = EXPAND_CONTINUE;
-  struct string_list at_paths = {0};
-  struct string_list args = {0};
-
-  if (!argc_p || !argv_p) {
-    errno = EINVAL;
-    return -1;
-  }
-
-  // copy the arguments into a private structure
-  string_list_add_argv(&args, *argc_p, *argv_p);
-
-  // "recursively" expand at files
-  while (EXPAND_CONTINUE == result) {
-    result = expand_at(&args, &at_paths, &hint);
-  }
-
-  // destroy the at_paths strings
-  string_list_dest(&at_paths);
-
-  // return the modified values, adding a NULL terminator to the string list
-  if (result == EXPAND_COMPLETE) {
-    args.strs = (char**)reallocf(args.strs, sizeof(char*) * (args.nstr + 1));
-    if (!args.strs)
-      throwf("reallocf failed");
-    args.strs[args.nstr] = NULL;
-
-    *argc_p = args.nstr;
-    *argv_p = args.strs;
-  }
-
-  return result == EXPAND_COMPLETE ? 0 : -1;
+	int hint = 0;
+	enum expand_result result = EXPAND_CONTINUE;
+	struct string_list at_paths = {0};
+	struct string_list args = {0};
+	if (!argc_p || !argv_p)
+	{
+		errno = EINVAL;
+		return -1;
+	}
+	// copy the arguments into a private structure
+	string_list_add_argv(&args, *argc_p, *argv_p);
+	// "recursively" expand at files
+	while (EXPAND_CONTINUE == result)
+	{
+		result = expand_at(&args, &at_paths, &hint);
+	}
+	// destroy the at_paths strings
+	string_list_dest(&at_paths);
+	// return the modified values, adding a NULL terminator to the string list
+	if (result == EXPAND_COMPLETE)
+	{
+		args.strs = (char **)reallocf(args.strs, sizeof(char *) * (args.nstr + 1));
+		if (!args.strs)
+		{
+			throwf("reallocf failed");
+		}
+		args.strs[args.nstr] = NULL;
+		*argc_p = args.nstr;
+		*argv_p = args.strs;
+	}
+	return result == EXPAND_COMPLETE ? 0 : -1;
 }
 
 /*
@@ -153,114 +154,129 @@ int ExpandResponseFiles(int* argc_p, char** argv_p[])
  *   }
  */
 // LD NB: expand_at will throw instead of returning EXPAND_ERROR.
-enum expand_result expand_at(struct string_list *args,
-struct string_list* at_paths, int *hint_p)
+enum expand_result
+expand_at(struct string_list *args,
+          struct string_list *at_paths, int *hint_p)
 {
-  int argc = args->nstr;
-  char** argv = args->strs;
-  int hint = hint_p ? *hint_p : 0;
-  struct string_list newargs = {0};
-  enum expand_result result = EXPAND_COMPLETE;
+	int argc = args->nstr;
+	char **argv = args->strs;
+	int hint = hint_p ? *hint_p : 0;
+	struct string_list newargs = {0};
+	enum expand_result result = EXPAND_COMPLETE;
 
-  for (int i = hint; i < argc; ++i) {
-    if ('@' == argv[i][0]) {
-      char* at_path = &(argv[i][1]);
-
-      // error if we have seen this path before.
-      if (at_paths && -1 != string_list_find(at_paths, at_path)) {
-	//fprintf(stderr, "error: recursively loading %s\n", at_path);
-	throwf("recursively loading %s\n", at_path);
-	return EXPAND_ERROR;
-      }
-
-      // open the file at this path. If the file does not exist, treat the
-      // entry like a literal string and continue.
-      int fd = open(at_path, O_RDONLY);
-      if (-1 == fd) {
-	if (ENOENT == errno) {
-	  // awkward. add this option if necessary.
-	  if (newargs.nstr) {
-	    string_list_add(&newargs, argv[i]);
-	  }
-	  continue;
+	for (int i = hint; i < argc; ++i)
+	{
+		if ('@' == argv[i][0])
+		{
+			char *at_path = &(argv[i][1]);
+			// error if we have seen this path before.
+			if (at_paths && -1 != string_list_find(at_paths, at_path))
+			{
+				//fprintf(stderr, "error: recursively loading %s\n", at_path);
+				throwf("recursively loading %s\n", at_path);
+				return EXPAND_ERROR;
+			}
+			// open the file at this path. If the file does not exist, treat the
+			// entry like a literal string and continue.
+			int fd = open(at_path, O_RDONLY);
+			if (-1 == fd)
+			{
+				if (ENOENT == errno)
+				{
+					// awkward. add this option if necessary.
+					if (newargs.nstr)
+					{
+						string_list_add(&newargs, argv[i]);
+					}
+					continue;
+				}
+				throwf("can't open %s: %s\n", at_path, strerror(errno));
+				return EXPAND_ERROR;
+			}
+			// remember we have opened this file previously
+			if (at_paths && -1 == string_list_find(at_paths, at_path))
+			{
+				string_list_add(at_paths, at_path);
+			}
+			// attempt to map the file into memory. if the file is empty, we will
+			// simply treat this as an empty buffer.
+			struct stat sb;
+			if (fstat(fd, &sb))
+			{
+				close(fd);
+				throwf("can't stat %s: %s\n", at_path, strerror(errno));
+				return EXPAND_ERROR;
+			}
+			char *addr = NULL;
+			if (sb.st_size)
+			{
+				addr = (char *)mmap(0, (size_t)sb.st_size, PROT_READ | PROT_WRITE,
+				                    MAP_FILE | MAP_PRIVATE, fd, 0);
+				if (!addr)
+				{
+					close(fd);
+					throwf("can't mmap %s: %s\n", at_path, strerror(errno));
+					return EXPAND_ERROR;
+				}
+			}
+			if (close(fd))
+			{
+				if (munmap(addr, (size_t)sb.st_size))
+				{
+					throwf("can't munmap %s: %s\n", at_path, strerror(errno));
+				}
+				throwf("can't close %s: %s\n", at_path, strerror(errno));
+				return EXPAND_ERROR;
+			}
+			// build a new argument list now
+			if (0 == newargs.nstr)
+			{
+				string_list_add_argv(&newargs, i, args->strs);
+				*hint_p = i;
+			}
+			// copy the strings in from the at file. If we see another at symbol
+			// set result to EXPAND_CONTINUE to request additional expansion.
+			if (addr)
+			{
+				char *p = addr;
+				for (char *arg = get_option(&p); arg; arg = get_option(&p))
+				{
+					string_list_add(&newargs, arg);
+					if ('@' == arg[0])
+					{
+						result = EXPAND_CONTINUE;
+					}
+				}
+			}
+			// unmap the file
+			if (addr)
+			{
+				if (munmap(addr, (size_t)sb.st_size))
+				{
+					throwf("can't munmap %s: %s\n", at_path,
+					       strerror(errno));
+					return EXPAND_ERROR;
+				}
+			}
+		}
+		else   // if ('@' != argv[i][0])
+		{
+			// add this literal option if necessary.
+			if (newargs.nstr)
+			{
+				string_list_add(&newargs, argv[i]);
+			}
+		}
 	}
-	throwf("can't open %s: %s\n", at_path, strerror(errno));
-	return EXPAND_ERROR;
-      }
 
-      // remember we have opened this file previously
-      if (at_paths && -1 == string_list_find(at_paths, at_path)) {
-	string_list_add(at_paths, at_path);
-      }
-
-      // attempt to map the file into memory. if the file is empty, we will
-      // simply treat this as an empty buffer.
-      struct stat sb;
-      if (fstat(fd, &sb)) {
-	close(fd);
-	throwf("can't stat %s: %s\n", at_path, strerror(errno));
-	return EXPAND_ERROR;
-      }
-
-      char* addr = NULL;
-      if (sb.st_size) {
-	addr = (char*)mmap(0, (size_t)sb.st_size, PROT_READ | PROT_WRITE,
-		    MAP_FILE | MAP_PRIVATE, fd, 0);
-	if (!addr) {
-	  close(fd);
-	  throwf("can't mmap %s: %s\n", at_path, strerror(errno));
-	  return EXPAND_ERROR;
+	if (newargs.nstr)
+	{
+		string_list_dest(args);
+		args->nstr = newargs.nstr;
+		args->strs = newargs.strs;
 	}
-      }
 
-      if (close(fd)) {
-	if (munmap(addr, (size_t)sb.st_size))
-	  throwf("can't munmap %s: %s\n", at_path, strerror(errno));
-	throwf("can't close %s: %s\n", at_path, strerror(errno));
-	return EXPAND_ERROR;
-      }
-
-      // build a new argument list now
-      if (0 == newargs.nstr) {
-	string_list_add_argv(&newargs, i, args->strs);
-	*hint_p = i;
-      }
-
-      // copy the strings in from the at file. If we see another at symbol
-      // set result to EXPAND_CONTINUE to request additional expansion.
-      if (addr) {
-	char* p = addr;
-	for (char* arg = get_option(&p); arg; arg = get_option(&p)) {
-	  string_list_add(&newargs, arg);
-	  if ('@' == arg[0])
-	    result = EXPAND_CONTINUE;
-	}
-      }
-
-      // unmap the file
-      if (addr) {
-	if (munmap(addr, (size_t)sb.st_size)) {
-	  throwf("can't munmap %s: %s\n", at_path,
-		  strerror(errno));
-	  return EXPAND_ERROR;
-	}
-      }
-    }
-    else { // if ('@' != argv[i][0])
-      // add this literal option if necessary.
-      if (newargs.nstr) {
-	string_list_add(&newargs, argv[i]);
-      }
-    }
-  }
-
-  if (newargs.nstr) {
-    string_list_dest(args);
-    args->nstr = newargs.nstr;
-    args->strs = newargs.strs;
-  }
-
-  return result;
+	return result;
 }
 
 /*
@@ -294,127 +310,152 @@ struct string_list* at_paths, int *hint_p)
  * "one" and "two". This is consistent with unix shell behavior, but not
  * consistent with some implementations of the @file command line option.
  */
-static char* get_option(char** buf)
+static char *
+get_option(char **buf)
 {
-  char* p = NULL; // beginning of option
-  char* q = NULL; // end of option
-
-  while (buf && *buf && *(*buf)) {
-    char c = *(*buf);
-
-    // whitespace
-    //   ignore the space. if in an option, end option parsing. the option
-    //   string (q) will be terminated later.
-    if (' ' == c || '\t' == c || '\n' == c || '\r' == c) {
-      (*buf)++;
-      if (p)
-	break;
-    }
-
-    // backslash
-    //   ignore the backslash, but treat the next character as a literal
-    //   character. start an option if not yet in an option.
-    else if ('\\' == c) {
-      // ignore the backslash (don't advance q)
-      (*buf)++;
-      // start a new option if necessary
-      if (!p)
-	p = q = *buf;
-      // if the string continues, include that next character in the option.
-      if (*(*buf)) {
-	*q++ = *(*buf);
-	(*buf)++;
-      }
-    }
-
-    // single or double quote
-    //   ignore the quote character, but treat all characters (except backslash
-    //   escaped cahracters) until a closing character as literal characters.
-    //
-    //   BUG: unterminated quotes are indistinguishable from terminated ones.
-    else if ('\'' == c || '"' == c) {
-      // ignore the quote (don't advance q)
-      (*buf)++;
-      // start a new option if necessary
-      if (!p)
-	p = q = *buf;
-      // consume remaining characters
-      while (*(*buf) && c != *(*buf)) {
-	if ('\\' == *(*buf)) {
-	  // ignore the backslash (don't advance q)
-	  (*buf)++;
-	  // if the string continues, include that next character in the option.
-	  if (*(*buf)) {
-	    *q++ = *(*buf);
-	    (*buf)++;
-	  }
+	char *p = NULL; // beginning of option
+	char *q = NULL; // end of option
+	while (buf && *buf && *(*buf))
+	{
+		char c = *(*buf);
+		// whitespace
+		//   ignore the space. if in an option, end option parsing. the option
+		//   string (q) will be terminated later.
+		if (' ' == c || '\t' == c || '\n' == c || '\r' == c)
+		{
+			(*buf)++;
+			if (p)
+			{
+				break;
+			}
+		}
+		// backslash
+		//   ignore the backslash, but treat the next character as a literal
+		//   character. start an option if not yet in an option.
+		else if ('\\' == c)
+		{
+			// ignore the backslash (don't advance q)
+			(*buf)++;
+			// start a new option if necessary
+			if (!p)
+			{
+				p = q = *buf;
+			}
+			// if the string continues, include that next character in the option.
+			if (*(*buf))
+			{
+				*q++ = *(*buf);
+				(*buf)++;
+			}
+		}
+		// single or double quote
+		//   ignore the quote character, but treat all characters (except backslash
+		//   escaped cahracters) until a closing character as literal characters.
+		//
+		//   BUG: unterminated quotes are indistinguishable from terminated ones.
+		else if ('\'' == c || '"' == c)
+		{
+			// ignore the quote (don't advance q)
+			(*buf)++;
+			// start a new option if necessary
+			if (!p)
+			{
+				p = q = *buf;
+			}
+			// consume remaining characters
+			while (*(*buf) && c != *(*buf))
+			{
+				if ('\\' == *(*buf))
+				{
+					// ignore the backslash (don't advance q)
+					(*buf)++;
+					// if the string continues, include that next character in the option.
+					if (*(*buf))
+					{
+						*q++ = *(*buf);
+						(*buf)++;
+					}
+				}
+				else
+				{
+					// include this character in the option.
+					*q++ = *(*buf);
+					(*buf)++;
+				}
+			}
+			// ignore the closing quote if we found one (don't advance q)
+			if (*(*buf))
+			{
+				(*buf)++;
+			}
+		}
+		// default (all other characters)
+		//   start an option if necessary, and consume the character
+		else
+		{
+			if (!p)
+			{
+				p = q = *buf;
+			}
+			*q++ = *(*buf);
+			(*buf)++;
+		}
 	}
-	else {
-	  // include this character in the option.
-	  *q++ = *(*buf);
-	  (*buf)++;
+	// terminate the option string
+	if (q)
+	{
+		*q = '\0';
 	}
-      }
-      // ignore the closing quote if we found one (don't advance q)
-      if (*(*buf))
-	(*buf)++;
-    }
-
-    // default (all other characters)
-    //   start an option if necessary, and consume the character
-    else {
-      if (!p)
-	p = q = *buf;
-      *q++ = *(*buf);
-      (*buf)++;
-    }
-  }
-
-  // terminate the option string
-  if (q)
-    *q = '\0';
-
-  return p;
+	return p;
 }
 
 /*
  * string_list_add() adds a string to the list.
  */
-static void string_list_add(struct string_list* list, const char* str)
+static void
+string_list_add(struct string_list *list, const char *str)
 {
-  list->strs = (char**)reallocf(list->strs, sizeof(char*) * (list->nstr + 1));
-  if (!list->strs) {
-    throwf("reallocf failed");
-  }
-  list->strs[list->nstr++] = strdup(str);
+	list->strs = (char **)reallocf(list->strs, sizeof(char *) * (list->nstr + 1));
+	if (!list->strs)
+	{
+		throwf("reallocf failed");
+	}
+	list->strs[list->nstr++] = strdup(str);
 }
 
 /*
  * string_list_add_argv() adds an array of strings to the string list.
  */
-static void string_list_add_argv(struct string_list* list, int argc,
-char* argv[])
+static void
+string_list_add_argv(struct string_list *list, int argc,
+                     char *argv[])
 {
-  list->strs = (char**)reallocf(list->strs, sizeof(char*) * (list->nstr + argc));
-  if (!list->strs) {
-    throwf("reallocf failed");
-  }
-  for (int i = 0; i < argc; ++i) {
-    list->strs[list->nstr++] = strdup(argv[i]);
-  }
+	list->strs = (char **)reallocf(list->strs, sizeof(char *) * (list->nstr + argc));
+	if (!list->strs)
+	{
+		throwf("reallocf failed");
+	}
+	for (int i = 0; i < argc; ++i)
+	{
+		list->strs[list->nstr++] = strdup(argv[i]);
+	}
 }
 
 /*
  * string_list_find() returns the index of str in the string list, or -1 if
  * the string is not found.
  */
-static int string_list_find(const struct string_list* list, const char* str)
+static int
+string_list_find(const struct string_list *list, const char *str)
 {
-  for (int i = 0; i < list->nstr; ++i) {
-    if (0 == strcmp(str, list->strs[i]))
-      return i;
-  }
-  return -1;
+	for (int i = 0; i < list->nstr; ++i)
+	{
+		if (0 == strcmp(str, list->strs[i]))
+		{
+			return i;
+		}
+	}
+	return -1;
 }
 
 /*
@@ -425,12 +466,14 @@ static int string_list_find(const struct string_list* list, const char* str)
  * BUG: this function is not called string_list_free() because that might
  * imply it also frees the struct string_list, which it does not.
  */
-static void string_list_dest(struct string_list* list)
+static void
+string_list_dest(struct string_list *list)
 {
-  for (int i = 0; i < list->nstr; ++i) {
-    free(list->strs[i]);
-  }
-  free(list->strs);
-  list->strs = NULL;
-  list->nstr = 0;
+	for (int i = 0; i < list->nstr; ++i)
+	{
+		free(list->strs[i]);
+	}
+	free(list->strs);
+	list->strs = NULL;
+	list->nstr = 0;
 }

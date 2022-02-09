@@ -1,16 +1,16 @@
-/* -*- mode: C++; c-basic-offset: 4; tab-width: 4 -*- 
+/* -*- mode: C++; c-basic-offset: 4; tab-width: 4 -*-
  *
  * Copyright (c) 2005-2010 Apple Inc. All rights reserved.
  *
  * @APPLE_LICENSE_HEADER_START@
- * 
+ *
  * This file contains Original Code and/or Modifications of Original Code
  * as defined in and that are subject to the Apple Public Source License
  * Version 2.0 (the 'License'). You may not use this file except in
  * compliance with the License. Please obtain a copy of the License at
  * http://www.opensource.apple.com/apsl/ and read it before using this
  * file.
- * 
+ *
  * The Original Code and all software distributed under the License are
  * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
  * EXPRESS OR IMPLIED, AND APPLE HEREBY DISCLAIMS ALL SUCH WARRANTIES,
@@ -18,7 +18,7 @@
  * FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT.
  * Please see the License for the specific language governing rights and
  * limitations under the License.
- * 
+ *
  * @APPLE_LICENSE_HEADER_END@
  */
 
@@ -38,7 +38,7 @@
 const ld::VersionSet ld::File::_platforms;
 
 
-static bool			sDumpContent= true;
+static bool			sDumpContent = true;
 static bool			sDumpStabs	= false;
 static bool			sSort		= true;
 static bool			sNMmode		= false;
@@ -49,25 +49,25 @@ static bool			sShowLineInfo			= true;
 
 static cpu_type_t		sPreferredArch = 0xFFFFFFFF;
 static cpu_subtype_t	sPreferredSubArch = 0xFFFFFFFF;
-static const char* sMatchName = NULL;
+static const char *sMatchName = NULL;
 static int sPrintRestrict;
 static int sPrintAlign;
 static int sPrintName;
 
- __attribute__((noreturn))
-void throwf(const char* format, ...) 
+__attribute__((noreturn))
+void throwf(const char *format, ...)
 {
 	va_list	list;
-	char*	p;
+	char	*p;
 	va_start(list, format);
 	vasprintf(&p, format, list);
 	va_end(list);
-	
-	const char*	t = p;
+	const char	*t = p;
 	throw t;
 }
 
-void warning(const char* format, ...)
+void
+warning(const char *format, ...)
 {
 	va_list	list;
 	fprintf(stderr, "warning: ");
@@ -77,14 +77,17 @@ void warning(const char* format, ...)
 	fprintf(stderr, "\n");
 }
 
-static void dumpStabs(const std::vector<ld::relocatable::File::Stab>* stabs)
+static void
+dumpStabs(const std::vector<ld::relocatable::File::Stab> *stabs)
 {
 	// debug info
 	printf("stabs: (%lu)\n", stabs->size());
-	for (std::vector<ld::relocatable::File::Stab>::const_iterator it = stabs->begin(); it != stabs->end(); ++it ) {
-		const ld::relocatable::File::Stab& stab = *it;
-		const char* code = "?????";
-		switch (stab.type) {
+	for (std::vector<ld::relocatable::File::Stab>::const_iterator it = stabs->begin(); it != stabs->end(); ++it)
+	{
+		const ld::relocatable::File::Stab &stab = *it;
+		const char *code = "?????";
+		switch (stab.type)
+		{
 			case N_GSYM:
 				code = " GSYM";
 				break;
@@ -170,17 +173,19 @@ static void dumpStabs(const std::vector<ld::relocatable::File::Stab>* stabs)
 				code =  "LENG";
 				break;
 		}
-		printf("  [atom=%20s] %02X %04X %s %s\n", ((stab.atom != NULL) ? stab.atom->name() : ""), stab.other, stab.desc, code, stab.string);
+		printf("  [atom=%20s] %02X %04X %s %s\n", ((stab.atom != NULL) ? stab.atom->name() : ""), stab.other, stab.desc, code,
+		       stab.string);
 	}
 }
 
 #if 0
-static void dumpAtomLikeNM(ld::Atom* atom)
+static void
+dumpAtomLikeNM(ld::Atom *atom)
 {
 	uint32_t size = atom->size();
-	
-	const char* visibility;
-	switch ( atom->scope() ) {
+	const char *visibility;
+	switch (atom->scope())
+	{
 		case ld::Atom::scopeTranslationUnit:
 			visibility = "internal";
 			break;
@@ -194,9 +199,9 @@ static void dumpAtomLikeNM(ld::Atom* atom)
 			visibility = "        ";
 			break;
 	}
-
-	const char* kind;
-	switch ( atom->definitionKind() ) {
+	const char *kind;
+	switch (atom->definitionKind())
+	{
 		case ld::Atom::kRegularDefinition:
 			kind = "regular  ";
 			break;
@@ -213,290 +218,357 @@ static void dumpAtomLikeNM(ld::Atom* atom)
 			kind = "         ";
 			break;
 	}
-
 	printf("0x%08X %s %s %s\n", size, visibility, kind, atom->name());
 }
 
 
-static void dumpAtom(ld::Atom* atom)
+static void
+dumpAtom(ld::Atom *atom)
 {
-	if(sMatchName && strcmp(sMatchName, atom->name()))
+	if (sMatchName && strcmp(sMatchName, atom->name()))
+	{
 		return;
-
+	}
 	//printf("atom:    %p\n", atom);
-	
 	// name
-	if(!sPrintRestrict || sPrintName)
+	if (!sPrintRestrict || sPrintName)
+	{
 		printf("name:    %s\n",  atom->name());
-	
+	}
 	// scope
-	if(!sPrintRestrict)
-		switch ( atom->scope() ) {
-		case ld::Atom::scopeTranslationUnit:
-			printf("scope:   translation unit\n");
-			break;
-		case ld::Atom::scopeLinkageUnit:
-			printf("scope:   linkage unit\n");
-			break;
-		case ld::Atom::scopeGlobal:
-			printf("scope:   global\n");
-			break;
-		default:
-			printf("scope:   unknown\n");
+	if (!sPrintRestrict)
+		switch (atom->scope())
+		{
+			case ld::Atom::scopeTranslationUnit:
+				printf("scope:   translation unit\n");
+				break;
+			case ld::Atom::scopeLinkageUnit:
+				printf("scope:   linkage unit\n");
+				break;
+			case ld::Atom::scopeGlobal:
+				printf("scope:   global\n");
+				break;
+			default:
+				printf("scope:   unknown\n");
 		}
-	
 	// kind
-	if(!sPrintRestrict)
-		switch ( atom->definitionKind() ) {
-		case ld::Atom::kRegularDefinition:
-			printf("kind:     regular\n");
-			break;
-		case ld::Atom::kWeakDefinition:
-			printf("kind:     weak\n");
-			break;
-		case ld::Atom::kTentativeDefinition:
-			printf("kind:     tentative\n");
-			break;
-		case ld::Atom::kExternalDefinition:
-			printf("kind:     import\n");
-			break;
-		case ld::Atom::kExternalWeakDefinition:
-			printf("kind:     weak import\n");
-			break;
-		case ld::Atom::kAbsoluteSymbol:
-			printf("kind:     absolute symbol\n");
-			break;
-		default:
-			printf("kind:   unknown\n");
+	if (!sPrintRestrict)
+		switch (atom->definitionKind())
+		{
+			case ld::Atom::kRegularDefinition:
+				printf("kind:     regular\n");
+				break;
+			case ld::Atom::kWeakDefinition:
+				printf("kind:     weak\n");
+				break;
+			case ld::Atom::kTentativeDefinition:
+				printf("kind:     tentative\n");
+				break;
+			case ld::Atom::kExternalDefinition:
+				printf("kind:     import\n");
+				break;
+			case ld::Atom::kExternalWeakDefinition:
+				printf("kind:     weak import\n");
+				break;
+			case ld::Atom::kAbsoluteSymbol:
+				printf("kind:     absolute symbol\n");
+				break;
+			default:
+				printf("kind:   unknown\n");
 		}
-
 	// segment and section
-	if(!sPrintRestrict && (atom->section().sectionName() != NULL) )
+	if (!sPrintRestrict && (atom->section().sectionName() != NULL))
+	{
 		printf("section: %s,%s\n", atom->section().segmentName(), atom->section().sectionName());
-
+	}
 	// attributes
-	if(!sPrintRestrict) {
+	if (!sPrintRestrict)
+	{
 		printf("attrs:   ");
-		if ( atom->dontDeadStrip() )
+		if (atom->dontDeadStrip())
+		{
 			printf("dont-dead-strip ");
-		if ( atom->isThumb() )
+		}
+		if (atom->isThumb())
+		{
 			printf("thumb ");
+		}
 		printf("\n");
 	}
-	
 	// size
-	if(!sPrintRestrict)
+	if (!sPrintRestrict)
+	{
 		printf("size:    0x%012llX\n", atom->size());
-	
+	}
 	// alignment
-	if(!sPrintRestrict || sPrintAlign)
-		printf("align:    %u mod %u\n", atom->alignment().modulus, (1 << atom->alignment().powerOf2) );
-
+	if (!sPrintRestrict || sPrintAlign)
+	{
+		printf("align:    %u mod %u\n", atom->alignment().modulus, (1 << atom->alignment().powerOf2));
+	}
 	// content
-	if (!sPrintRestrict && sDumpContent ) { 
+	if (!sPrintRestrict && sDumpContent)
+	{
 		uint64_t size = atom->size();
-		if ( size < 4096 ) {
+		if (size < 4096)
+		{
 			uint8_t content[size];
 			atom->copyRawContent(content);
 			printf("content: ");
-			if ( atom->contentType() == ld::Atom::typeCString ) {
+			if (atom->contentType() == ld::Atom::typeCString)
+			{
 				printf("\"");
-				for (unsigned int i=0; i < size; ++i) {
-					if(content[i]<'!' || content[i]>=127)
+				for (unsigned int i = 0; i < size; ++i)
+				{
+					if (content[i] < '!' || content[i] >= 127)
+					{
 						printf("\\%o", content[i]);
+					}
 					else
+					{
 						printf("%c", content[i]);
+					}
 				}
 				printf("\"");
 			}
-			else {
-				for (unsigned int i=0; i < size; ++i)
+			else
+			{
+				for (unsigned int i = 0; i < size; ++i)
+				{
 					printf("%02X ", content[i]);
+				}
 			}
 		}
 		printf("\n");
 	}
-	
 	// unwind info
-	if(!sPrintRestrict) {
-		if ( atom->beginUnwind() != atom->endUnwind() ) {
+	if (!sPrintRestrict)
+	{
+		if (atom->beginUnwind() != atom->endUnwind())
+		{
 			printf("unwind encodings:\n");
-			for (ld::Atom::UnwindInfo::iterator it = atom->beginUnwind(); it != atom->endUnwind(); ++it) {
+			for (ld::Atom::UnwindInfo::iterator it = atom->beginUnwind(); it != atom->endUnwind(); ++it)
+			{
 				printf("\t 0x%04X  0x%08X\n", it->startOffset, it->unwindInfo);
 			}
 		}
 	}
-#if 0	
+#if 0
 	// references
-	if(!sPrintRestrict) {
-		std::vector<ObjectFile::Reference*>&  references = atom->getReferences();
+	if (!sPrintRestrict)
+	{
+		std::vector<ObjectFile::Reference *>  &references = atom->getReferences();
 		const int refCount = references.size();
 		printf("references: (%u)\n", refCount);
-		for (int i=0; i < refCount; ++i) {
-			ObjectFile::Reference* ref = references[i];
+		for (int i = 0; i < refCount; ++i)
+		{
+			ObjectFile::Reference *ref = references[i];
 			printf("   %s\n", ref->getDescription());
 		}
 	}
-#endif	
+#endif
 	// line info
-	if(!sPrintRestrict) {
-		if ( atom->beginLineInfo() != atom->endLineInfo() ) {
+	if (!sPrintRestrict)
+	{
+		if (atom->beginLineInfo() != atom->endLineInfo())
+		{
 			printf("line info:\n");
-			for (ld::Atom::LineInfo::iterator it = atom->beginLineInfo(); it != atom->endLineInfo(); ++it) {
+			for (ld::Atom::LineInfo::iterator it = atom->beginLineInfo(); it != atom->endLineInfo(); ++it)
+			{
 				printf("   offset 0x%04X, line %d, file %s\n", it->atomOffset, it->lineNumber, it->fileName);
 			}
 		}
 	}
-
-	if(!sPrintRestrict)
+	if (!sPrintRestrict)
+	{
 		printf("\n");
+	}
 }
 #endif
 struct AtomSorter
 {
-     bool operator()(const ld::Atom* left, const ld::Atom* right)
-     {
-		if ( left == right )
+	bool
+	operator()(const ld::Atom *left, const ld::Atom *right)
+	{
+		if (left == right)
+		{
 			return false;
+		}
 		// first sort by segment name
 		int diff = strcmp(left->section().segmentName(), right->section().segmentName());
-		if ( diff != 0 )
+		if (diff != 0)
+		{
 			return (diff > 0);
-		
+		}
 		// then sort by section name
 		diff = strcmp(left->section().sectionName(), right->section().sectionName());
-		if ( diff != 0 )
+		if (diff != 0)
+		{
 			return (diff < 0);
-		
+		}
 		// then sort by atom name
 		diff = strcmp(left->name(), right->name());
-		if ( diff != 0 )
+		if (diff != 0)
+		{
 			return (diff < 0);
-		
-		// if cstring, sort by content
-		if ( left->contentType() == ld::Atom::typeCString ) {
-			diff = strcmp((char*)left->rawContentPointer(), (char*)right->rawContentPointer());
-			if ( diff != 0 )
-				return (diff < 0);
 		}
-		else if ( left->section().type() == ld::Section::typeCStringPointer ) {
+		// if cstring, sort by content
+		if (left->contentType() == ld::Atom::typeCString)
+		{
+			diff = strcmp((char *)left->rawContentPointer(), (char *)right->rawContentPointer());
+			if (diff != 0)
+			{
+				return (diff < 0);
+			}
+		}
+		else if (left->section().type() == ld::Section::typeCStringPointer)
+		{
 			// if pointer to c-string sort by name
-			const char* leftString = NULL;
+			const char *leftString = NULL;
 			assert(left->fixupsBegin() != left->fixupsEnd());
-			for (ld::Fixup::iterator fit = left->fixupsBegin(); fit != left->fixupsEnd(); ++fit) {
-				if ( fit->binding == ld::Fixup::bindingByContentBound ) {
-					const ld::Atom* cstringAtom = fit->u.target;
+			for (ld::Fixup::iterator fit = left->fixupsBegin(); fit != left->fixupsEnd(); ++fit)
+			{
+				if (fit->binding == ld::Fixup::bindingByContentBound)
+				{
+					const ld::Atom *cstringAtom = fit->u.target;
 					assert(cstringAtom->contentType() == ld::Atom::typeCString);
-					leftString = (char*)cstringAtom->rawContentPointer();
+					leftString = (char *)cstringAtom->rawContentPointer();
 				}
 			}
-			const char* rightString = NULL;
+			const char *rightString = NULL;
 			assert(right->fixupsBegin() != right->fixupsEnd());
-			for (ld::Fixup::iterator fit = right->fixupsBegin(); fit != right->fixupsEnd(); ++fit) {
-				if ( fit->binding == ld::Fixup::bindingByContentBound ) {
-					const ld::Atom* cstringAtom = fit->u.target;
+			for (ld::Fixup::iterator fit = right->fixupsBegin(); fit != right->fixupsEnd(); ++fit)
+			{
+				if (fit->binding == ld::Fixup::bindingByContentBound)
+				{
+					const ld::Atom *cstringAtom = fit->u.target;
 					assert(cstringAtom->contentType() == ld::Atom::typeCString);
-					rightString = (char*)cstringAtom->rawContentPointer();
+					rightString = (char *)cstringAtom->rawContentPointer();
 				}
 			}
-			if ( leftString != rightString ) {
+			if (leftString != rightString)
+			{
 				assert(leftString != NULL);
 				assert(rightString != NULL);
 				diff = strcmp(leftString, rightString);
-				if ( diff != 0 )
+				if (diff != 0)
+				{
 					return (diff < 0);
+				}
 			}
 		}
-		else if ( left->section().type() == ld::Section::typeLiteral4 ) {
+		else if (left->section().type() == ld::Section::typeLiteral4)
+		{
 			// if literal sort by content
-			uint32_t leftValue  = *(uint32_t*)left->rawContentPointer();
-			uint32_t rightValue = *(uint32_t*)right->rawContentPointer();
+			uint32_t leftValue  = *(uint32_t *)left->rawContentPointer();
+			uint32_t rightValue = *(uint32_t *)right->rawContentPointer();
 			diff = (leftValue - rightValue);
-			if ( diff != 0 )
+			if (diff != 0)
+			{
 				return (diff < 0);
+			}
 		}
-		else if ( left->section().type() == ld::Section::typeCFI ) {
+		else if (left->section().type() == ld::Section::typeCFI)
+		{
 			// if __he_frame sort by address
 			diff = (left->objectAddress() - right->objectAddress());
-			if ( diff != 0 )
+			if (diff != 0)
+			{
 				return (diff < 0);
+			}
 		}
-		else if ( left->section().type() == ld::Section::typeNonLazyPointer ) {
+		else if (left->section().type() == ld::Section::typeNonLazyPointer)
+		{
 			// if non-lazy-pointer sort by name
-			const char* leftString = NULL;
+			const char *leftString = NULL;
 			assert(left->fixupsBegin() != left->fixupsEnd());
-			for (ld::Fixup::iterator fit = left->fixupsBegin(); fit != left->fixupsEnd(); ++fit) {
-				if ( fit->binding == ld::Fixup::bindingByNameUnbound ) {
+			for (ld::Fixup::iterator fit = left->fixupsBegin(); fit != left->fixupsEnd(); ++fit)
+			{
+				if (fit->binding == ld::Fixup::bindingByNameUnbound)
+				{
 					leftString = fit->u.name;
 				}
-				else if ( fit->binding == ld::Fixup::bindingDirectlyBound ) {
+				else if (fit->binding == ld::Fixup::bindingDirectlyBound)
+				{
 					leftString = fit->u.target->name();
 				}
 			}
-			const char* rightString = NULL;
+			const char *rightString = NULL;
 			assert(right->fixupsBegin() != right->fixupsEnd());
-			for (ld::Fixup::iterator fit = right->fixupsBegin(); fit != right->fixupsEnd(); ++fit) {
-				if ( fit->binding == ld::Fixup::bindingByNameUnbound ) {
+			for (ld::Fixup::iterator fit = right->fixupsBegin(); fit != right->fixupsEnd(); ++fit)
+			{
+				if (fit->binding == ld::Fixup::bindingByNameUnbound)
+				{
 					rightString = fit->u.name;
 				}
-				else if ( fit->binding == ld::Fixup::bindingDirectlyBound ) {
+				else if (fit->binding == ld::Fixup::bindingDirectlyBound)
+				{
 					rightString = fit->u.target->name();
 				}
 			}
 			assert(leftString != NULL);
 			assert(rightString != NULL);
 			diff = strcmp(leftString, rightString);
-			if ( diff != 0 )
+			if (diff != 0)
+			{
 				return (diff < 0);
+			}
 		}
-		
 		// else sort by size
 		return (left->size() < right->size());
-     }
+	}
 };
 
 
 class dumper : public ld::File::AtomHandler
 {
-public:
-			void dump();
-	virtual void doAtom(const ld::Atom&);
-	virtual void doFile(const ld::File&) {} 
-private:
-	void			dumpAtom(const ld::Atom& atom);
-	const char*		scopeString(const ld::Atom&);
-	const char*		definitionString(const ld::Atom&);
-	const char*		combineString(const ld::Atom&);
-	const char*		inclusionString(const ld::Atom&);
-	const char*		attributeString(const ld::Atom&);
-	const char*		makeName(const ld::Atom& atom);
-	const char*		referenceTargetAtomName(const ld::Fixup* ref);
-	void			dumpFixup(const ld::Fixup* ref);
-	
-	uint64_t		addressOfFirstAtomInSection(const ld::Section&);
-	
-	std::vector<const ld::Atom*> _atoms;
+	public:
+		void dump();
+		virtual void doAtom(const ld::Atom &);
+		virtual void
+		doFile(const ld::File &) {}
+	private:
+		void			dumpAtom(const ld::Atom &atom);
+		const char		*scopeString(const ld::Atom &);
+		const char		*definitionString(const ld::Atom &);
+		const char		*combineString(const ld::Atom &);
+		const char		*inclusionString(const ld::Atom &);
+		const char		*attributeString(const ld::Atom &);
+		const char		*makeName(const ld::Atom &atom);
+		const char		*referenceTargetAtomName(const ld::Fixup *ref);
+		void			dumpFixup(const ld::Fixup *ref);
+
+		uint64_t		addressOfFirstAtomInSection(const ld::Section &);
+
+		std::vector<const ld::Atom *> _atoms;
 };
 
-const char*	dumper::scopeString(const ld::Atom& atom)
+const char	*
+dumper::scopeString(const ld::Atom &atom)
 {
-	switch ( (ld::Atom::Scope)atom.scope() ) {
+	switch ((ld::Atom::Scope)atom.scope())
+	{
 		case ld::Atom::scopeTranslationUnit:
 			return "translation-unit";
 		case ld::Atom::scopeLinkageUnit:
 			return "hidden";
 		case ld::Atom::scopeGlobal:
-			if ( atom.autoHide() )
+			if (atom.autoHide())
+			{
 				return "global but automatically hidden";
+			}
 			else
+			{
 				return "global";
+			}
 	}
-	return "UNKNOWN";	
+	return "UNKNOWN";
 }
 
-const char*	dumper::definitionString(const ld::Atom& atom)
+const char	*
+dumper::definitionString(const ld::Atom &atom)
 {
-	switch ( (ld::Atom::Definition)atom.definition() ) {
+	switch ((ld::Atom::Definition)atom.definition())
+	{
 		case ld::Atom::definitionRegular:
 			return "regular";
 		case ld::Atom::definitionTentative:
@@ -505,13 +577,15 @@ const char*	dumper::definitionString(const ld::Atom& atom)
 			return "absolute";
 		case ld::Atom::definitionProxy:
 			return "proxy";
-		}
-	return "UNKNOWN";	
+	}
+	return "UNKNOWN";
 }
 
-const char*	dumper::combineString(const ld::Atom& atom)
+const char	*
+dumper::combineString(const ld::Atom &atom)
 {
-	switch ( (ld::Atom::Combine)atom.combine() ) {
+	switch ((ld::Atom::Combine)atom.combine())
+	{
 		case ld::Atom::combineNever:
 			return "never";
 		case ld::Atom::combineByName:
@@ -520,13 +594,15 @@ const char*	dumper::combineString(const ld::Atom& atom)
 			return "by-name-and-content";
 		case ld::Atom::combineByNameAndReferences:
 			return "by-name-and-references";
-		}
-	return "UNKNOWN";	
+	}
+	return "UNKNOWN";
 }
 
-const char*	dumper::inclusionString(const ld::Atom& atom)
+const char	*
+dumper::inclusionString(const ld::Atom &atom)
 {
-	switch ( (ld::Atom::SymbolTableInclusion)atom.symbolTableInclusion() ) {
+	switch ((ld::Atom::SymbolTableInclusion)atom.symbolTableInclusion())
+	{
 		case ld::Atom::symbolTableNotIn:
 			return "not in";
 		case ld::Atom::symbolTableNotInFinalLinkedImages:
@@ -539,92 +615,111 @@ const char*	dumper::inclusionString(const ld::Atom& atom)
 			return "in as absolute";
 		case ld::Atom::symbolTableInWithRandomAutoStripLabel:
 			return "in as random auto-strip label";
-		}
-	return "UNKNOWN";	
+	}
+	return "UNKNOWN";
 }
 
 
 
-const char*	dumper::attributeString(const ld::Atom& atom)
+const char	*
+dumper::attributeString(const ld::Atom &atom)
 {
 	static char buffer[256];
 	buffer[0] = '\0';
-	
-	if ( atom.dontDeadStrip() )
+	if (atom.dontDeadStrip())
+	{
 		strcat(buffer, "dont-dead-strip ");
-
-	if ( atom.isThumb() )
+	}
+	if (atom.isThumb())
+	{
 		strcat(buffer, "thumb ");
-		
-	if ( atom.isAlias() )
+	}
+	if (atom.isAlias())
+	{
 		strcat(buffer, "alias ");
-		
-	if ( atom.cold() )
+	}
+	if (atom.cold())
+	{
 		strcat(buffer, "cold ");
-
-	if ( atom.contentType() == ld::Atom::typeResolver )
+	}
+	if (atom.contentType() == ld::Atom::typeResolver)
+	{
 		strcat(buffer, "resolver ");
-		
+	}
 	return buffer;
 }
 
-const char* dumper::makeName(const ld::Atom& atom)
+const char *
+dumper::makeName(const ld::Atom &atom)
 {
 	static char buffer[4096];
 	strcpy(buffer, "???");
-	switch ( atom.symbolTableInclusion() ) {
+	switch (atom.symbolTableInclusion())
+	{
 		case ld::Atom::symbolTableNotIn:
-			if ( atom.contentType() == ld::Atom::typeCString ) {
+			if (atom.contentType() == ld::Atom::typeCString)
+			{
 				strcpy(buffer, "cstring=");
-				strlcat(buffer, (char*)atom.rawContentPointer(), 4096);
+				strlcat(buffer, (char *)atom.rawContentPointer(), 4096);
 			}
-			else if ( atom.section().type() == ld::Section::typeLiteral4 ) {
+			else if (atom.section().type() == ld::Section::typeLiteral4)
+			{
 				char temp[16];
 				strcpy(buffer, "literal4=");
-				uint32_t value = *(uint32_t*)atom.rawContentPointer();
+				uint32_t value = *(uint32_t *)atom.rawContentPointer();
 				sprintf(temp, "0x%08X", value);
 				strcat(buffer, temp);
 			}
-			else if ( atom.section().type() == ld::Section::typeLiteral8 ) {
+			else if (atom.section().type() == ld::Section::typeLiteral8)
+			{
 				char temp[32];
 				strcpy(buffer, "literal8=");
-				uint32_t value1 = *(uint32_t*)atom.rawContentPointer();
-				uint32_t value2 = ((uint32_t*)atom.rawContentPointer())[1];
+				uint32_t value1 = *(uint32_t *)atom.rawContentPointer();
+				uint32_t value2 = ((uint32_t *)atom.rawContentPointer())[1];
 				sprintf(temp, "0x%08X%08X", value1, value2);
 				strcat(buffer, temp);
 			}
-			else if ( atom.section().type() == ld::Section::typeLiteral16 ) {
+			else if (atom.section().type() == ld::Section::typeLiteral16)
+			{
 				char temp[64];
 				strcpy(buffer, "literal16=");
-				uint32_t value1 = *(uint32_t*)atom.rawContentPointer();
-				uint32_t value2 = ((uint32_t*)atom.rawContentPointer())[1];
-				uint32_t value3 = ((uint32_t*)atom.rawContentPointer())[2];
-				uint32_t value4 = ((uint32_t*)atom.rawContentPointer())[3];
+				uint32_t value1 = *(uint32_t *)atom.rawContentPointer();
+				uint32_t value2 = ((uint32_t *)atom.rawContentPointer())[1];
+				uint32_t value3 = ((uint32_t *)atom.rawContentPointer())[2];
+				uint32_t value4 = ((uint32_t *)atom.rawContentPointer())[3];
 				sprintf(temp, "0x%08X%08X%08X%08X", value1, value2, value3, value4);
 				strcat(buffer, temp);
 			}
-			else if ( atom.section().type() == ld::Section::typeCStringPointer ) {
+			else if (atom.section().type() == ld::Section::typeCStringPointer)
+			{
 				assert(atom.fixupsBegin() != atom.fixupsEnd());
-				for (ld::Fixup::iterator fit = atom.fixupsBegin(); fit != atom.fixupsEnd(); ++fit) {
-					if ( fit->binding == ld::Fixup::bindingByContentBound ) {
-						const ld::Atom* cstringAtom = fit->u.target;
-						if ( (cstringAtom != NULL) && (cstringAtom->contentType() == ld::Atom::typeCString) ) {
+				for (ld::Fixup::iterator fit = atom.fixupsBegin(); fit != atom.fixupsEnd(); ++fit)
+				{
+					if (fit->binding == ld::Fixup::bindingByContentBound)
+					{
+						const ld::Atom *cstringAtom = fit->u.target;
+						if ((cstringAtom != NULL) && (cstringAtom->contentType() == ld::Atom::typeCString))
+						{
 							strlcpy(buffer, atom.name(), 4096);
 							strlcat(buffer, "=", 4096);
-							strlcat(buffer, (char*)cstringAtom->rawContentPointer(), 4096);
+							strlcat(buffer, (char *)cstringAtom->rawContentPointer(), 4096);
 						}
 					}
 				}
 			}
-			else if ( atom.section().type() == ld::Section::typeNonLazyPointer ) {
+			else if (atom.section().type() == ld::Section::typeNonLazyPointer)
+			{
 				assert(atom.fixupsBegin() != atom.fixupsEnd());
-				for (ld::Fixup::iterator fit = atom.fixupsBegin(); fit != atom.fixupsEnd(); ++fit) {
-					if ( fit->binding == ld::Fixup::bindingByNameUnbound ) {
+				for (ld::Fixup::iterator fit = atom.fixupsBegin(); fit != atom.fixupsEnd(); ++fit)
+				{
+					if (fit->binding == ld::Fixup::bindingByNameUnbound)
+					{
 						strcpy(buffer, "non-lazy-pointer-to:");
 						strlcat(buffer, fit->u.name, 4096);
 						return buffer;
 					}
-					else if ( fit->binding == ld::Fixup::bindingDirectlyBound ) {
+					else if (fit->binding == ld::Fixup::bindingDirectlyBound)
+					{
 						strcpy(buffer, "non-lazy-pointer-to-local:");
 						strlcat(buffer, fit->u.target->name(), 4096);
 						return buffer;
@@ -632,9 +727,10 @@ const char* dumper::makeName(const ld::Atom& atom)
 				}
 				strlcpy(buffer, atom.name(), 4096);
 			}
-			else {
+			else
+			{
 				uint64_t sectAddr = addressOfFirstAtomInSection(atom.section());
-				sprintf(buffer, "%s@%s+0x%08llX", atom.name(), atom.section().sectionName(), atom.objectAddress()-sectAddr);
+				sprintf(buffer, "%s@%s+0x%08llX", atom.name(), atom.section().sectionName(), atom.objectAddress() - sectAddr);
 			}
 			break;
 		case ld::Atom::symbolTableNotInFinalLinkedImages:
@@ -648,10 +744,12 @@ const char* dumper::makeName(const ld::Atom& atom)
 	return buffer;
 }
 
-const char* dumper::referenceTargetAtomName(const ld::Fixup* ref)
+const char *
+dumper::referenceTargetAtomName(const ld::Fixup *ref)
 {
 	static char buffer[4096];
-	switch ( ref->binding ) {
+	switch (ref->binding)
+	{
 		case ld::Fixup::bindingNone:
 			return "NO BINDING";
 		case ld::Fixup::bindingByNameUnbound:
@@ -659,7 +757,7 @@ const char* dumper::referenceTargetAtomName(const ld::Fixup* ref)
 			strlcat(buffer, ref->u.name, 4096);
 			strlcat(buffer, ")", 4096);
 			return buffer;
-			//return ref->u.name;
+		//return ref->u.name;
 		case ld::Fixup::bindingByContentBound:
 			strcpy(buffer, "by-content(");
 			strlcat(buffer, makeName(*ref->u.target), 4096);
@@ -677,12 +775,15 @@ const char* dumper::referenceTargetAtomName(const ld::Fixup* ref)
 }
 
 
-void dumper::dumpFixup(const ld::Fixup* ref)
+void
+dumper::dumpFixup(const ld::Fixup *ref)
 {
-	if ( ref->weakImport ) {
+	if (ref->weakImport)
+	{
 		printf("weak_import ");
 	}
-	switch ( (ld::Fixup::Kind)(ref->kind) ) {
+	switch ((ld::Fixup::Kind)(ref->kind))
+	{
 		case ld::Fixup::kindNone:
 			printf("none");
 			break;
@@ -919,7 +1020,8 @@ void dumper::dumpFixup(const ld::Fixup* ref)
 			ld::Fixup::LOH_arm64 extra;
 			extra.addend = ref->u.addend;
 			printf("ARM64 hint: ");
-			switch(extra.info.kind) {
+			switch (extra.info.kind)
+			{
 				case LOH_ARM64_ADRP_ADRP:
 					printf("ADRP-ADRP");
 					break;
@@ -946,13 +1048,19 @@ void dumper::dumpFixup(const ld::Fixup* ref)
 					break;
 			}
 			printf(", offset1=0x%X", (extra.info.delta1 << 2)  + ref->offsetInAtom);
-			if ( extra.info.count > 0 )
+			if (extra.info.count > 0)
+			{
 				printf(", offset2=0x%X", (extra.info.delta2 << 2) + ref->offsetInAtom);
-			if ( extra.info.count > 1 )
+			}
+			if (extra.info.count > 1)
+			{
 				printf(", offset3=0x%X", (extra.info.delta3 << 2)  + ref->offsetInAtom);
-			if ( extra.info.count > 2 )
+			}
+			if (extra.info.count > 2)
+			{
 				printf(", offset4=0x%X", (extra.info.delta4 << 2)  + ref->offsetInAtom);
-#endif			
+			}
+#endif
 			break;
 		case ld::Fixup::kindStoreTargetAddressLittleEndian32:
 			printf("store 32-bit little endian address of %s", referenceTargetAtomName(ref));
@@ -1044,7 +1152,8 @@ void dumper::dumpFixup(const ld::Fixup* ref)
 #endif
 #if SUPPORT_ARCH_arm64e
 		case ld::Fixup::kindSetAuthData:
-			printf("(addrDiv=%d, diversity=0X%04X, key=%d) ", ref->u.authData.hasAddressDiversity, ref->u.authData.discriminator, ref->u.authData.key);
+			printf("(addrDiv=%d, diversity=0X%04X, key=%d) ", ref->u.authData.hasAddressDiversity, ref->u.authData.discriminator,
+			       ref->u.authData.key);
 			break;
 		case ld::Fixup::kindStoreLittleEndianAuth64:
 			printf(", then store auth 64-bit little endian");
@@ -1053,63 +1162,84 @@ void dumper::dumpFixup(const ld::Fixup* ref)
 			printf("store auth 64-bit little endian address of %s", referenceTargetAtomName(ref));
 			break;
 #endif
-		//default:
-		//	printf("unknown fixup");
-		//	break;
+			//default:
+			//	printf("unknown fixup");
+			//	break;
 	}
 }
 
-uint64_t dumper::addressOfFirstAtomInSection(const ld::Section& sect)
+uint64_t
+dumper::addressOfFirstAtomInSection(const ld::Section &sect)
 {
 	uint64_t lowestAddr = (uint64_t)(-1);
-	for (std::vector<const ld::Atom*>::iterator it=_atoms.begin(); it != _atoms.end(); ++it) {
-		const ld::Atom* atom = *it;
-		if ( &atom->section() == &sect ) {
-			if ( atom->objectAddress() < lowestAddr )
+	for (std::vector<const ld::Atom *>::iterator it = _atoms.begin(); it != _atoms.end(); ++it)
+	{
+		const ld::Atom *atom = *it;
+		if (&atom->section() == &sect)
+		{
+			if (atom->objectAddress() < lowestAddr)
+			{
 				lowestAddr = atom->objectAddress();
+			}
 		}
 	}
 	return lowestAddr;
 }
 
-void dumper::doAtom(const ld::Atom& atom)
+void
+dumper::doAtom(const ld::Atom &atom)
 {
-	if ( (sMatchName != NULL) && (strcmp(sMatchName, atom.name()) != 0) )
+	if ((sMatchName != NULL) && (strcmp(sMatchName, atom.name()) != 0))
+	{
 		return;
+	}
 	_atoms.push_back(&atom);
 }
 
-void dumper::dump()
-{	
-	if ( sSort ) 
+void
+dumper::dump()
+{
+	if (sSort)
+	{
 		std::sort(_atoms.begin(), _atoms.end(), AtomSorter());
-
-	for (std::vector<const ld::Atom*>::iterator it=_atoms.begin(); it != _atoms.end(); ++it) {
+	}
+	for (std::vector<const ld::Atom *>::iterator it = _atoms.begin(); it != _atoms.end(); ++it)
+	{
 		this->dumpAtom(**it);
 	}
-}	
+}
 
-void dumper::dumpAtom(const ld::Atom& atom)
-{		
- 	printf("name:     %s\n", makeName(atom)); 
+void
+dumper::dumpAtom(const ld::Atom &atom)
+{
+	printf("name:     %s\n", makeName(atom));
 	printf("size:     0x%0llX\n", atom.size());
-	printf("align:    %u mod %u\n", atom.alignment().modulus, (1 << atom.alignment().powerOf2) );
+	printf("align:    %u mod %u\n", atom.alignment().modulus, (1 << atom.alignment().powerOf2));
 	printf("scope:    %s\n", scopeString(atom));
-	if ( sShowDefinitionKind ) 
+	if (sShowDefinitionKind)
+	{
 		printf("def:      %s\n", definitionString(atom));
-	if ( sShowCombineKind )
+	}
+	if (sShowCombineKind)
+	{
 		printf("combine:  %s\n", combineString(atom));
+	}
 	printf("symbol:   %s\n", inclusionString(atom));
 	printf("attrs:    %s\n", attributeString(atom));
-	if ( sShowSection )
+	if (sShowSection)
+	{
 		printf("section:  %s,%s\n", atom.section().segmentName(), atom.section().sectionName());
-	if ( atom.beginUnwind() != atom.endUnwind() ) {
+	}
+	if (atom.beginUnwind() != atom.endUnwind())
+	{
 		uint32_t lastOffset = 0;
 		uint32_t lastCUE = 0;
 		bool first = true;
-		const char* label = "unwind:";
-		for (ld::Atom::UnwindInfo::iterator it=atom.beginUnwind(); it != atom.endUnwind(); ++it) {
-			if ( !first ) {
+		const char *label = "unwind:";
+		for (ld::Atom::UnwindInfo::iterator it = atom.beginUnwind(); it != atom.endUnwind(); ++it)
+		{
+			if (!first)
+			{
 				printf("%s   0x%08X -> 0x%08X: 0x%08X\n", label, lastOffset, it->startOffset, lastCUE);
 				label = "       ";
 			}
@@ -1119,18 +1249,24 @@ void dumper::dumpAtom(const ld::Atom& atom)
 		}
 		printf("%s   0x%08X -> 0x%08X: 0x%08X\n", label, lastOffset, (uint32_t)atom.size(), lastCUE);
 	}
-	if ( atom.contentType() == ld::Atom::typeCString ) {
-		uint8_t buffer[atom.size()+2];
+	if (atom.contentType() == ld::Atom::typeCString)
+	{
+		uint8_t buffer[atom.size() + 2];
 		atom.copyRawContent(buffer);
 		buffer[atom.size()] = '\0';
 		printf("content:  \"%s\"\n", buffer);
 	}
-	if ( atom.fixupsBegin() != atom.fixupsEnd() ) {
+	if (atom.fixupsBegin() != atom.fixupsEnd())
+	{
 		printf("fixups:\n");
-		for (unsigned int off=0; off < atom.size()+1; ++off) {
-			for (ld::Fixup::iterator it = atom.fixupsBegin(); it != atom.fixupsEnd(); ++it) {
-				if ( it->offsetInAtom == off ) {
-					switch ( it->clusterSize ) {
+		for (unsigned int off = 0; off < atom.size() + 1; ++off)
+		{
+			for (ld::Fixup::iterator it = atom.fixupsBegin(); it != atom.fixupsEnd(); ++it)
+			{
+				if (it->offsetInAtom == off)
+				{
+					switch (it->clusterSize)
+					{
 						case ld::Fixup::k1of1:
 							printf("    0x%04X ", it->offsetInAtom);
 							dumpFixup(it);
@@ -1179,85 +1315,107 @@ void dumper::dumpAtom(const ld::Atom& atom)
 			}
 		}
 	}
-	if ( sShowLineInfo ) {
-		if ( atom.beginLineInfo() != atom.endLineInfo() ) {
+	if (sShowLineInfo)
+	{
+		if (atom.beginLineInfo() != atom.endLineInfo())
+		{
 			printf("line info:\n");
-			for (ld::Atom::LineInfo::iterator it = atom.beginLineInfo(); it != atom.endLineInfo(); ++it) {
+			for (ld::Atom::LineInfo::iterator it = atom.beginLineInfo(); it != atom.endLineInfo(); ++it)
+			{
 				printf("   offset 0x%04X, line %d, file %s\n", it->atomOffset, it->lineNumber, it->fileName);
 			}
 		}
 	}
-	
 	printf("\n");
 }
 
-static void dumpFile(ld::relocatable::File* file)
+static void
+dumpFile(ld::relocatable::File *file)
 {
 	// stabs debug info
-	if ( sDumpStabs && (file->debugInfo() == ld::relocatable::File::kDebugInfoStabs) ) {
-		const std::vector<ld::relocatable::File::Stab>* stabs = file->stabs();
-		if ( stabs != NULL )
+	if (sDumpStabs && (file->debugInfo() == ld::relocatable::File::kDebugInfoStabs))
+	{
+		const std::vector<ld::relocatable::File::Stab> *stabs = file->stabs();
+		if (stabs != NULL)
+		{
 			dumpStabs(stabs);
+		}
 	}
 	// dump atoms
 	dumper d;
 	file->forEachAtom(d);
 	d.dump();
-
-#if 0	
+#if 0
 	// get all atoms
-	std::vector<ObjectFile::Atom*> atoms = reader->getAtoms();
-	
+	std::vector<ObjectFile::Atom *> atoms = reader->getAtoms();
 	// make copy of vector and sort (so output is canonical)
-	std::vector<ObjectFile::Atom*> sortedAtoms(atoms);
-	if ( sSort )
+	std::vector<ObjectFile::Atom *> sortedAtoms(atoms);
+	if (sSort)
+	{
 		std::sort(sortedAtoms.begin(), sortedAtoms.end(), AtomSorter());
-	
-	for(std::vector<ObjectFile::Atom*>::iterator it=sortedAtoms.begin(); it != sortedAtoms.end(); ++it) {
-		if ( sNMmode )
+	}
+	for (std::vector<ObjectFile::Atom *>::iterator it = sortedAtoms.begin(); it != sortedAtoms.end(); ++it)
+	{
+		if (sNMmode)
+		{
 			dumpAtomLikeNM(*it);
+		}
 		else
+		{
 			dumpAtom(*it);
+		}
 	}
 #endif
 }
 
 
-static ld::relocatable::File* createReader(const char* path)
+static ld::relocatable::File *
+createReader(const char *path)
 {
 	struct stat stat_buf;
-	
 	int fd = ::open(path, O_RDONLY, 0);
-	if ( fd == -1 )
+	if (fd == -1)
+	{
 		throwf("cannot open file: %s", path);
+	}
 	::fstat(fd, &stat_buf);
-	uint8_t* p = (uint8_t*)::mmap(NULL, stat_buf.st_size, PROT_READ, MAP_FILE | MAP_PRIVATE, fd, 0);
+	uint8_t *p = (uint8_t *)::mmap(NULL, stat_buf.st_size, PROT_READ, MAP_FILE | MAP_PRIVATE, fd, 0);
 	::close(fd);
-	if ( p == (uint8_t*)(-1) )
+	if (p == (uint8_t *)(-1))
+	{
 		throwf("cannot mmap file: %s", path);
-	const mach_header* mh = (mach_header*)p;
+	}
+	const mach_header *mh = (mach_header *)p;
 	uint64_t fileLen = stat_buf.st_size;
 	bool foundFatSlice = false;
-	if ( mh->magic == OSSwapBigToHostInt32(FAT_MAGIC) ) {
-		const struct fat_header* fh = (struct fat_header*)p;
-		const struct fat_arch* archs = (struct fat_arch*)(p + sizeof(struct fat_header));
-		if ( (uint32_t)sPreferredArch ==  0xFFFFFFFF ) {
+	if (mh->magic == OSSwapBigToHostInt32(FAT_MAGIC))
+	{
+		const struct fat_header *fh = (struct fat_header *)p;
+		const struct fat_arch *archs = (struct fat_arch *)(p + sizeof(struct fat_header));
+		if ((uint32_t)sPreferredArch ==  0xFFFFFFFF)
+		{
 			// just dump first slice of fat .o file
-			if ( OSSwapBigToHostInt32(fh->nfat_arch) > 0 )  {
+			if (OSSwapBigToHostInt32(fh->nfat_arch) > 0)
+			{
 				p = p + OSSwapBigToHostInt32(archs[0].offset);
-				mh = (struct mach_header*)p;
+				mh = (struct mach_header *)p;
 				fileLen = OSSwapBigToHostInt32(archs[0].size);
 				sPreferredArch = OSSwapBigToHostInt32(archs[0].cputype);
 				sPreferredSubArch = OSSwapBigToHostInt32(archs[0].cpusubtype);
 				foundFatSlice = true;
 			}
 		}
-		else {
-			for (unsigned long i=0; i < OSSwapBigToHostInt32(fh->nfat_arch); ++i) {
-				if ( OSSwapBigToHostInt32(archs[i].cputype) == (uint32_t)sPreferredArch ) {
-					if ( ((uint32_t)sPreferredSubArch == 0xFFFFFFFF) || ((uint32_t)sPreferredSubArch == OSSwapBigToHostInt32(archs[i].cpusubtype)) ) {
+		else
+		{
+			for (unsigned long i = 0; i < OSSwapBigToHostInt32(fh->nfat_arch); ++i)
+			{
+				if (OSSwapBigToHostInt32(archs[i].cputype) == (uint32_t)sPreferredArch)
+				{
+					if (((uint32_t)sPreferredSubArch == 0xFFFFFFFF)
+					        || ((uint32_t)sPreferredSubArch == OSSwapBigToHostInt32(archs[i].cpusubtype)))
+					{
 						p = p + OSSwapBigToHostInt32(archs[i].offset);
-						mh = (struct mach_header*)p;
+						mh = (struct mach_header *)p;
 						fileLen = OSSwapBigToHostInt32(archs[i].size);
 						foundFatSlice = true;
 						break;
@@ -1266,7 +1424,6 @@ static ld::relocatable::File* createReader(const char* path)
 			}
 		}
 	}
-
 	mach_o::relocatable::ParserOptions objOpts;
 	objOpts.architecture		= sPreferredArch;
 	objOpts.objSubtypeMustMatch = false;
@@ -1284,30 +1441,36 @@ static ld::relocatable::File* createReader(const char* path)
 	objOpts.usingBitcode		= true;
 	objOpts.forceHidden			= false;
 #if 1
-	if ( ! foundFatSlice ) {
+	if (! foundFatSlice)
+	{
 		cpu_type_t archOfObj;
 		cpu_subtype_t subArchOfObj;
 		ld::VersionSet platformsFound;
-		if ( mach_o::relocatable::isObjectFile(p, fileLen, &archOfObj, &subArchOfObj, platformsFound) ) {
+		if (mach_o::relocatable::isObjectFile(p, fileLen, &archOfObj, &subArchOfObj, platformsFound))
+		{
 			objOpts.architecture = archOfObj;
 			objOpts.subType = subArchOfObj;
 		}
 	}
-
-	ld::relocatable::File* objResult = mach_o::relocatable::parse(p, fileLen, path, stat_buf.st_mtime, ld::File::Ordinal::NullOrdinal(), objOpts);
-	if ( objResult != NULL )
+	ld::relocatable::File *objResult = mach_o::relocatable::parse(p, fileLen, path, stat_buf.st_mtime,
+	                                   ld::File::Ordinal::NullOrdinal(), objOpts);
+	if (objResult != NULL)
+	{
 		return objResult;
-
+	}
 	// see if it is an llvm object file
-	objResult = lto::parse(p, fileLen, path, stat_buf.st_mtime, ld::File::Ordinal::NullOrdinal(), sPreferredArch, sPreferredSubArch, false, true);
-	if ( objResult != NULL ) 
+	objResult = lto::parse(p, fileLen, path, stat_buf.st_mtime, ld::File::Ordinal::NullOrdinal(), sPreferredArch,
+	                       sPreferredSubArch, false, true);
+	if (objResult != NULL)
+	{
 		return objResult;
-
+	}
 	throwf("not a mach-o object file: %s", path);
 #else
 	// for peformance testing
-	for (int i=0; i < 500; ++i ) {
-		ld::relocatable::File* objResult = mach_o::relocatable::parse(p, fileLen, path, stat_buf.st_mtime, 0, objOpts);
+	for (int i = 0; i < 500; ++i)
+	{
+		ld::relocatable::File *objResult = mach_o::relocatable::parse(p, fileLen, path, stat_buf.st_mtime, 0, objOpts);
 		delete objResult;
 	}
 	exit(0);
@@ -1319,95 +1482,121 @@ void
 usage()
 {
 	fprintf(stderr, "ObjectDump options:\n"
-			"\t-no_content\tdon't dump contents\n"
-			"\t-no_section\tdon't dump section name\n"
-			"\t-no_definition\tdon't dump definition kind\n"
-			"\t-no_combine\tdon't dump combine mode\n"
-			"\t-stabs\t\tdump stabs\n"
-			"\t-arch aaa\tonly dump info about arch aaa\n"
-			"\t-only sym\tonly dump info about sym\n"
-			"\t-align\t\tonly print alignment info\n"
-			"\t-name\t\tonly print symbol names\n"
-		);
+	        "\t-no_content\tdon't dump contents\n"
+	        "\t-no_section\tdon't dump section name\n"
+	        "\t-no_definition\tdon't dump definition kind\n"
+	        "\t-no_combine\tdon't dump combine mode\n"
+	        "\t-stabs\t\tdump stabs\n"
+	        "\t-arch aaa\tonly dump info about arch aaa\n"
+	        "\t-only sym\tonly dump info about sym\n"
+	        "\t-align\t\tonly print alignment info\n"
+	        "\t-name\t\tonly print symbol names\n"
+	       );
 }
 
-int main(int argc, const char* argv[])
+int
+main(int argc, const char *argv[])
 {
-	if(argc<2) {
+	if (argc < 2)
+	{
 		usage();
 		return 0;
 	}
-
-	try {
-		for(int i=1; i < argc; ++i) {
-			const char* arg = argv[i];
-			if ( arg[0] == '-' ) {
-				if ( strcmp(arg, "-no_content") == 0 ) {
+	try
+	{
+		for (int i = 1; i < argc; ++i)
+		{
+			const char *arg = argv[i];
+			if (arg[0] == '-')
+			{
+				if (strcmp(arg, "-no_content") == 0)
+				{
 					sDumpContent = false;
 				}
-				else if ( strcmp(arg, "-nm") == 0 ) {
+				else if (strcmp(arg, "-nm") == 0)
+				{
 					sNMmode = true;
 				}
-				else if ( strcmp(arg, "-stabs") == 0 ) {
+				else if (strcmp(arg, "-stabs") == 0)
+				{
 					sDumpStabs = true;
 				}
-				else if ( strcmp(arg, "-no_sort") == 0 ) {
+				else if (strcmp(arg, "-no_sort") == 0)
+				{
 					sSort = false;
 				}
-				else if ( strcmp(arg, "-no_section") == 0 ) {
+				else if (strcmp(arg, "-no_section") == 0)
+				{
 					sShowSection = false;
 				}
-				else if ( strcmp(arg, "-no_definition") == 0 ) {
+				else if (strcmp(arg, "-no_definition") == 0)
+				{
 					sShowDefinitionKind = false;
 				}
-				else if ( strcmp(arg, "-no_combine") == 0 ) {
+				else if (strcmp(arg, "-no_combine") == 0)
+				{
 					sShowCombineKind = false;
 				}
-				else if ( strcmp(arg, "-no_line_info") == 0 ) {
+				else if (strcmp(arg, "-no_line_info") == 0)
+				{
 					sShowLineInfo = false;
 				}
-				else if ( strcmp(arg, "-arch") == 0 ) {
-					const char* archName = argv[++i];
-					if ( archName == NULL )
+				else if (strcmp(arg, "-arch") == 0)
+				{
+					const char *archName = argv[++i];
+					if (archName == NULL)
+					{
 						throw "-arch missing architecture name";
+					}
 					bool found = false;
-					for (const ArchInfo* t=archInfoArray; t->archName != NULL; ++t) {
-						if ( strcmp(t->archName,archName) == 0 ) {
+					for (const ArchInfo *t = archInfoArray; t->archName != NULL; ++t)
+					{
+						if (strcmp(t->archName, archName) == 0)
+						{
 							sPreferredArch = t->cpuType;
-							if ( t->isSubType )
+							if (t->isSubType)
+							{
 								sPreferredSubArch = t->cpuSubType;
+							}
 							found = true;
 						}
 					}
-					if ( !found )
+					if (!found)
+					{
 						throwf("unknown architecture %s", archName);
+					}
 				}
-				else if ( strcmp(arg, "-only") == 0 ) {
-					sMatchName = ++i<argc? argv[i]: NULL;
+				else if (strcmp(arg, "-only") == 0)
+				{
+					sMatchName = ++i < argc ? argv[i] : NULL;
 				}
-				else if ( strcmp(arg, "-align") == 0 ) {
+				else if (strcmp(arg, "-align") == 0)
+				{
 					sPrintRestrict = true;
 					sPrintAlign = true;
 				}
-				else if ( strcmp(arg, "-name") == 0 ) {
+				else if (strcmp(arg, "-name") == 0)
+				{
 					sPrintRestrict = true;
 					sPrintName = true;
 				}
-				else {
+				else
+				{
 					usage();
 					throwf("unknown option: %s\n", arg);
 				}
 			}
-			else {
-				ld::relocatable::File* reader = createReader(arg);
+			else
+			{
+				ld::relocatable::File *reader = createReader(arg);
 				dumpFile(reader);
 			}
 		}
 	}
-	catch (const char* msg) {
+	catch (const char *msg)
+	{
 		fprintf(stderr, "ObjDump failed: %s\n", msg);
 		return 1;
 	}
-	
 	return 0;
 }

@@ -1,4 +1,4 @@
-include_directories(ld)
-include_directories(abstraction)
-include_directories(other)
+add_subdirectory(ld)
+add_subdirectory(abstraction)
+add_subdirectory(other)
 

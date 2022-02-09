@@ -22,6 +22,5 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_SYSTEM_NAME STREQUAL "Utopia
 endif()
 
 
-add_subdirectory(compat)
 add_subdirectory(src)
 
